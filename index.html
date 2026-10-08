@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Talk Time Cards</title>
+<meta name="theme-color" content="#2b2370">
+<meta name="description" content="A pass-and-play conversation card game for up to six players.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg1:#1f1b5c;--bg2:#52288c;--ink:#2a2350;--gold:#ffd23f;--panel:rgba(255,255,255,.1)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{font-family:'Fredoka','Trebuchet MS',system-ui,sans-serif;color:#fff;background:linear-gradient(160deg,var(--bg1),var(--bg2));background-attachment:fixed;overflow:hidden}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.screen{display:none;position:absolute;inset:0;flex-direction:column;overflow:hidden}
+.screen.on{display:flex}
+
+/* ---------- setup ---------- */
+#setup{overflow-y:auto;padding:max(16px,env(safe-area-inset-top)) 16px 32px;align-items:center}
+.wrap{width:100%;max-width:980px}
+h1{margin:6px 0 2px;font-size:clamp(30px,6vw,46px);text-align:center;line-height:1.1}
+.sub{margin:0 0 16px;text-align:center;opacity:.85;font-size:17px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+@media(min-width:800px){.cols{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:start}}
+.panel{background:var(--panel);border:1px solid rgba(255,255,255,.14);border-radius:22px;padding:14px 16px 16px}
+.panel h2{margin:4px 0 10px;font-size:18px;font-weight:600}
+.panel h2:not(:first-child){margin-top:18px}
+.cnt{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.cnt button{height:52px;border-radius:16px;border:2px solid transparent;background:rgba(255,255,255,.14);color:#fff;font-size:22px;font-weight:600}
+.cnt button[aria-pressed=true]{background:var(--gold);color:#3a2a00;border-color:#fff}
+#plist{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:12px}
+.prow{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.1);border-radius:16px;padding:7px 10px}
+.prow .av{flex:none;width:48px;height:48px;border-radius:14px;border:0;background:#fff;font-size:28px;line-height:1}
+.prow input{flex:1 1 0;width:0;min-width:0;height:46px;border-radius:12px;border:0;padding:0 12px;font:500 18px 'Fredoka',system-ui,sans-serif;color:var(--ink);background:#fff}
+.prow .num{flex:none;font-weight:700;opacity:.7;width:18px;text-align:center}
+.chips{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+@media(min-width:420px){.chips{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.chip{display:flex;align-items:center;gap:10px;min-height:54px;padding:6px 12px;border-radius:16px;border:2px solid transparent;background:rgba(255,255,255,.12);color:#fff;text-align:left;font-size:16px;font-weight:500}
+.chip .e{font-size:26px;flex:none}
+.chip small{display:block;opacity:.8;font-size:12px;font-weight:400}
+.chip span.t{min-width:0}
+.chip[aria-pressed=true]{background:rgba(255,255,255,.95);color:var(--ink);border-color:var(--cc,var(--gold));box-shadow:inset 6px 0 0 var(--cc,var(--gold))}
+.tg{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin-bottom:8px;min-height:56px;padding:8px 14px;border-radius:16px;border:0;background:rgba(255,255,255,.12);color:#fff;text-align:left;font-size:17px;font-weight:600}
+.tg small{display:block;font-weight:400;opacity:.8;font-size:13px}
+.tg i{flex:none;position:relative;width:50px;height:30px;border-radius:15px;background:rgba(255,255,255,.28);transition:.2s}
+.tg i::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
+.tg[aria-pressed=true] i{background:#3ccf7e}
+.tg[aria-pressed=true] i::after{left:23px}
+.big{display:block;width:100%;max-width:520px;margin:18px auto 0;min-height:64px;border:0;border-radius:22px;background:var(--gold);color:#3a2a00;font-size:24px;font-weight:700;box-shadow:0 6px 0 #c79a00}
+.big:active{transform:translateY(3px);box-shadow:0 3px 0 #c79a00}
+.hint{margin:8px 0 0;font-size:13px;opacity:.8;text-align:center}
+
+/* ---------- game ---------- */
+#game{padding:max(8px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom))}
+.top{display:flex;align-items:center;gap:8px;height:46px;flex:none}
+.top h2{flex:1;margin:0;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .cl{font-size:14px;opacity:.85;white-space:nowrap}
+.ib{flex:none;width:44px;height:44px;border-radius:14px;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:20px}
+#players{display:grid;grid-template-columns:repeat(var(--n,3),minmax(0,1fr));gap:6px;flex:none;margin:6px 0 4px}
+.pl{background:rgba(255,255,255,.1);border-radius:14px;padding:6px 2px 4px;text-align:center;min-width:0;border:2px solid transparent;transition:.2s}
+.pl.cur{border-color:var(--gold);background:rgba(255,210,63,.2);transform:translateY(-2px)}
+.pl.done{opacity:.6}
+.pl .a{font-size:26px;line-height:1.1}
+.pl .n{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 3px}
+.pl .s{font-size:12px;min-height:15px}
+.pl.pop{animation:pop .6s}
+@keyframes pop{30%{transform:scale(1.18)}}
+#stage{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;padding:6px 0}
+.sc{margin:auto;width:100%;max-width:600px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.back{width:min(52vw,230px);height:min(36dvh,290px);aspect-ratio:3/4;max-width:100%;border-radius:24px;border:4px solid #fff;background:repeating-linear-gradient(45deg,#6a3fd1 0 14px,#5a33b8 14px 28px);box-shadow:0 12px 32px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:60px;cursor:pointer;animation:float 3s ease-in-out infinite}
+.back span{font-size:20px;font-weight:700}
+@keyframes float{50%{transform:translateY(-6px) rotate(-1deg)}}
+.turn{margin:0;text-align:center;font-size:clamp(18px,3.4vw,24px);line-height:1.25}
+.turn small{opacity:.85;font-size:.8em}
+.card{width:100%;background:#fff;color:var(--ink);border-radius:26px;overflow:hidden;box-shadow:0 14px 40px rgba(0,0,0,.4);animation:deal .45s cubic-bezier(.2,.9,.3,1.2)}
+.card .band{background:var(--cc);color:#fff;display:flex;align-items:center;gap:10px;padding:10px 16px;font-weight:600;font-size:18px}
+.card .band .e{font-size:30px}
+.card .q{padding:20px 20px 22px;font-size:clamp(21px,4.6vw,32px);font-weight:600;line-height:1.25;text-align:center;overflow-wrap:anywhere}
+.card .deep{margin:0 14px 14px;padding:10px 14px 12px;border-radius:16px;background:color-mix(in srgb,var(--cc) 14%,white);font-size:clamp(17px,3.6vw,24px);font-weight:500;animation:deal .3s}
+.card .deep b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--cc)}
+@keyframes deal{from{transform:translateY(26px) rotate(-3deg) scale(.92);opacity:0}to{transform:none;opacity:1}}
+.bonus{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;font-size:13px}
+.bonus button{height:38px;min-width:42px;padding:0 8px;border-radius:12px;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:20px}
+#foot{flex:none;display:grid;gap:8px;padding-top:8px;width:100%;max-width:700px;margin:0 auto}
+.pills{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pill{border:0;border-radius:16px;min-height:58px;padding:4px;color:#fff;font:600 15px 'Fredoka',system-ui,sans-serif;background:var(--cc,#6a3fd1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+.pill:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.pill .e{font-size:22px}
+.pill.any{background:linear-gradient(135deg,#ff5c8a,#ffb347)}
+.acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.act{min-height:54px;border:0;border-radius:16px;background:rgba(255,255,255,.18);color:#fff;font-size:17px;font-weight:600;padding:4px 8px}
+.act.go{grid-column:1/-1;background:var(--gold);color:#3a2a00;font-size:20px;font-weight:700;box-shadow:0 4px 0 #c79a00}
+@media(min-width:700px){.pills{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media(max-height:520px){
+  .top{height:40px}.ib{width:38px;height:38px}
+  .pl .a{font-size:20px}.pl .s{min-height:0}
+  .pills{grid-template-columns:repeat(6,minmax(0,1fr))}.pill{min-height:48px;font-size:13px}.pill .e{font-size:18px}
+  .acts{grid-template-columns:repeat(3,minmax(0,1fr))}.act.go{grid-column:auto}.act{min-height:46px;font-size:15px}
+  .card .q{padding:12px 16px 14px}.back{height:30dvh;font-size:40px}
+}
+
+/* ---------- end ---------- */
+#end{overflow-y:auto;align-items:center;padding:max(24px,env(safe-area-inset-top)) 16px 32px}
+#end .wrap{max-width:560px;text-align:center}
+#end h1{margin-bottom:6px}
+.stat{font-size:20px;margin:6px 0 16px;opacity:.95}
+.rank{display:grid;gap:8px;margin:0 0 8px;text-align:left}
+.rank .r{display:flex;align-items:center;gap:12px;background:var(--panel);border-radius:16px;padding:8px 14px;font-size:20px}
+.rank .r .e{font-size:30px}.rank .r .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.twin{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+.twin .big{margin:0;font-size:19px;min-height:60px}
+.twin .big.alt{background:rgba(255,255,255,.2);color:#fff;box-shadow:0 6px 0 rgba(0,0,0,.25)}
+#toast{position:fixed;left:50%;bottom:max(90px,env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#fff;color:var(--ink);padding:10px 18px;border-radius:999px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;z-index:9;max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<section id="setup" class="screen on" aria-label="Game setup">
+  <div class="wrap">
+    <h1>💬 Talk Time Cards</h1>
+    <p class="sub">Pick a card, share a story, and get to know each other!</p>
+    <div class="cols">
+      <div class="panel">
+        <h2>How many players?</h2>
+        <div id="optPlayers" class="cnt" role="group" aria-label="Number of players"></div>
+        <div id="plist"></div>
+        <p class="hint">Tap an animal to change it. Names are optional.</p>
+      </div>
+      <div class="panel">
+        <h2>Card decks</h2>
+        <div id="optDecks" class="chips" role="group" aria-label="Card decks"></div>
+        <h2>Topics</h2>
+        <div id="optCats" class="chips" role="group" aria-label="Topics"></div>
+        <h2>How to play</h2>
+        <button class="tg" data-act="tog" data-k="everyone" aria-pressed="false"><span>Everyone answers<small>Each card goes all the way around the table</small></span><i></i></button>
+        <button class="tg" data-act="tog" data-k="stars" aria-pressed="false"><span>Talking stars<small>Earn ⭐ for sharing and for great follow-up questions</small></span><i></i></button>
+        <button class="tg" data-act="tog" data-k="voice" aria-pressed="true"><span>Read cards aloud<small>Great for early readers</small></span><i></i></button>
+        <button class="tg" data-act="tog" data-k="sound" aria-pressed="true"><span>Sounds<small>Little chimes when you draw</small></span><i></i></button>
+      </div>
+    </div>
+    <button id="start" class="big" data-act="start">Start talking!</button>
+  </div>
+</section>
+
+<section id="game" class="screen" aria-label="Game">
+  <div class="top">
+    <button class="ib" data-act="finish" aria-label="End game">🏁</button>
+    <h2>💬 Talk Time</h2>
+    <span class="cl" id="cleft"></span>
+    <button class="ib" id="voiceBtn" data-act="voice" aria-label="Read aloud on or off">🔊</button>
+  </div>
+  <div id="players"></div>
+  <main id="stage" aria-live="polite"></main>
+  <div id="foot"></div>
+</section>
+
+<section id="end" class="screen" aria-label="Game over">
+  <div class="wrap">
+    <h1>🎉 Great talking, everyone!</h1>
+    <div class="stat" id="endStat"></div>
+    <div class="rank" id="endRank"></div>
+    <div class="twin">
+      <button class="big" data-act="resume">Keep playing</button>
+      <button class="big alt" data-act="setup">New game</button>
+    </div>
+  </div>
+</section>
+
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+(()=>{
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const AV=['🐶','🐱','🐰','🦊','🐼','🦁','🐸','🐵','🦄','🐙'];
+const CATS=[
+ {id:'school', name:'School & Learning', short:'School',  emoji:'🏫', color:'#2f6fe0'},
+ {id:'home',   name:'Home & Family',     short:'Home',    emoji:'🏠', color:'#e8751a'},
+ {id:'feelings',name:'Feelings',         short:'Feelings',emoji:'💛', color:'#d63a77'},
+ {id:'future', name:'Dreams & Future',   short:'Dreams',  emoji:'🚀', color:'#7048e8'},
+ {id:'fun',    name:'Fun & Silly',       short:'Silly',   emoji:'🎉', color:'#1e9e5a'}
+];
+const CATBY=Object.fromEntries(CATS.map(c=>[c.id,c]));
+const DECKS=[
+ {id:'little', name:'Little Kids', sub:'ages 4 to 8', emoji:'🧸'},
+ {id:'big',    name:'Big Kids & Grown-ups', sub:'ages 9 and up', emoji:'🌟'}
+];
+/* Every card is "question | follow-up question". All wording is original. */
+const T={
+little:{
+school:[
+"What is your favorite thing to do at school? | What makes it so much fun?",
+"Who do you like to sit next to at lunch? | What do you like to talk about?",
+"If you were the teacher for one day, what would you teach? | What would your first rule be?",
+"What is the best thing you ever made with paper and crayons? | Who did you show it to?",
+"What do you like to play at recess? | Who plays with you?",
+"What is something new you learned this week? | Can you teach it to me?",
+"What is your favorite story or book? | Who is your favorite character in it?",
+"What is the hardest thing about school? | What helps when it feels hard?",
+"If your backpack could talk, what would it say? | What would it complain about?",
+"What song do you like to sing at school? | Can you sing a tiny bit of it?",
+"What would you put in the best lunch box ever? | What would you leave out?",
+"What is your favorite color to draw with? | What do you like to draw with it?",
+"Tell about a kind thing a friend did for you at school. | How did it make you feel?",
+"What do you want to learn how to do? | Who could teach you?"],
+home:[
+"What is your favorite thing to do with your family? | When did you last do it?",
+"What is your favorite food that someone makes for you? | Do you help make it?",
+"What is the funniest thing a pet has ever done? | What happened next?",
+"Where is your favorite spot in your house? | Why do you like it there?",
+"What is your favorite bedtime story or song? | Who tells it to you?",
+"What is a chore you don't mind doing? | What would make chores more fun?",
+"If our family were superheroes, what would our team name be? | What power would each person have?",
+"What is the best hug you ever got? | Who gave it to you?",
+"Where would our family go on a fun trip? | What would we pack?",
+"What makes someone in your family laugh? | What makes you laugh the most?",
+"What is your favorite thing to do on a rainy day? | Who joins you?",
+"How do you help out at home? | What is the best part about helping?",
+"What is a family tradition you love? | Can you tell us how it works?",
+"If you were the family chef, what would you cook? | What would it taste like?"],
+feelings:[
+"What makes you feel happy? | Where do you feel it in your body?",
+"What do you do when you feel grumpy? | What helps you feel better?",
+"What makes you feel brave? | When were you brave last?",
+"Tell about a time you felt proud. | Who did you tell?",
+"What makes you feel calm and cozy? | Can you show us a slow calm breath?",
+"What do you do when you feel shy? | What would help you feel less shy?",
+"When did you feel a little bit scared? | What helped you feel safe?",
+"What kind words make you feel good? | Who says them to you?",
+"If your feelings were colors, what color is today? | Why that color?",
+"What can you do when a friend feels sad? | What could you say to them?",
+"What makes you so excited you can't sit still? | Can you wiggle like that?",
+"Tell about a time you said sorry. | How did it go?",
+"What is something you are thankful for today? | Who helped make it happen?",
+"What makes you feel loved? | How do you show love back?"],
+future:[
+"What do you want to be when you grow up? | What would your day look like?",
+"If you could go anywhere in the world, where would you go? | What would you do first?",
+"If you could invent a machine, what would it do? | What would you name it?",
+"What would you do with a magic wand? | What would you change first?",
+"Would you rather live in a treehouse, a castle or a spaceship? | What would your room look like?",
+"What are you looking forward to this year? | Who will you share it with?",
+"If you could have any animal for a pet, which one? | What would you name it?",
+"What is something you hope to do this summer? | Who would come along?",
+"If you could fly, where would you fly first? | What would you see below?",
+"What will you do for your next birthday? | What kind of cake would you pick?",
+"What do you want to build one day? | What would you build it out of?",
+"If you found a treasure map, where would it lead? | What treasure would be there?",
+"What would you like to get really good at? | How could you practice?",
+"What would your perfect day look like? | Who would be there?"],
+fun:[
+"If you were an animal for a day, which one would you be? | What would you do first?",
+"What would a dinosaur say if it could talk? | Can you say it in your best dino voice?",
+"If you could eat only one food all day, what would it be? | Would you get tired of it?",
+"What is the silliest face you can make? | Can you show everyone?",
+"What toppings would go on a rainbow pizza? | Who gets the first slice?",
+"What would you name a pet unicorn? | What would it like to eat?",
+"What would you do if it rained spaghetti? | Would you need an umbrella or a fork?",
+"What is your best joke? | Do you know another one?",
+"What is your favorite silly word? | Can you use it in a sentence?",
+"If your shoes could talk, what would they say? | What would they ask for?",
+"What would you do if you woke up as tiny as an ant? | Where would you go first?",
+"If you could talk to animals, which animal would you talk to first? | What would you ask it?",
+"What is your favorite thing to do in the water? | Who goes with you?",
+"Make up a name for a brand new ice cream flavor. | What goes in it?"]
+},
+big:{
+school:[
+"What subject would you teach if you could teach anything? | What would your first lesson be?",
+"What is a skill you want to master this year? | What is your first step?",
+"What is a mistake that taught you something? | What would you tell someone else about it?",
+"Which teacher or mentor made a difference for you? | What did they do?",
+"What is the most interesting fact you know? | Where did you learn it?",
+"If school had a brand new subject, what should it be? | What would the class do?",
+"What do you do when a task seems impossible? | What has helped before?",
+"What is one thing you wish everyone learned in school? | Why does it matter?",
+"What is the best project you have worked on? | What made it great?",
+"How do you learn best: reading, doing or talking it through? | Why does that work for you?",
+"What question have you always wanted answered? | How could you find out?",
+"What is a surprising thing you discovered lately? | Did it change your mind?",
+"Who is great at explaining things? | What makes them good at it?",
+"If you could take a class from anyone, past or present, who would it be? | What would you ask them?"],
+home:[
+"What is a favorite memory from a family trip? | What made it stick?",
+"What is a family recipe you would never trade? | Who passed it down?",
+"What rule at home would you change? | What would you suggest instead?",
+"What do you appreciate most about someone at this table? | Can you tell them directly?",
+"What is a tradition you hope we keep forever? | Should we start a new one?",
+"What is something funny that always happens in our family? | When did it last happen?",
+"If our home had a motto, what would it be? | Who would paint the sign?",
+"What was your favorite part of this week at home? | What could we do again?",
+"What is a story you know about a grandparent or ancestor? | What would you like to ask them?",
+"What is the best way to spend a lazy weekend? | Who is in charge of snacks?",
+"What do you do that helps our family run smoothly? | What do you wish someone else did?",
+"What does home feel like to you? | What smell or sound reminds you of it?",
+"If we could add one new room, what would it be? | What would go inside?",
+"What did you learn from someone older than you? | How have you used it since?"],
+feelings:[
+"What always cheers you up? | Can we try it today?",
+"What does a good friend do? | Which of those things do you do?",
+"When did you last feel really proud of yourself? | What led up to it?",
+"What worries you more than you let on? | What would help?",
+"How do you like to be comforted when you feel down? | How can others tell?",
+"Tell about a time you were brave even though you were nervous. | What got you through?",
+"What do you wish people understood about you? | How could you show them?",
+"What is a compliment you still remember? | Why did it matter?",
+"How do you calm down when you are frustrated? | What definitely doesn't work?",
+"When have you forgiven someone? | How did it feel afterward?",
+"What are you grateful for that you rarely mention? | Who should hear it?",
+"What makes you laugh until it hurts? | Do you remember the last time?",
+"When do you feel most like yourself? | Who are you with?",
+"What kind thing did someone do for you that you never forgot? | How could you pass it on?"],
+future:[
+"Where do you see yourself in ten years? | What is the first step toward it?",
+"If money were no object, how would you spend a year? | Who would you bring?",
+"What problem in the world would you like to solve? | Where would you start?",
+"What is on your bucket list? | Which one is next?",
+"What do you think will be different when you are all grown up? | Are you excited or nervous?",
+"What would you invent to make life easier? | Who would use it first?",
+"What job would you try for a week? | What do you think you would learn?",
+"If you could live in any time period, which one? | What would you miss from now?",
+"What goal did you give up on that you might try again? | What would you do differently?",
+"What would you like people to say about you? | What are you doing to earn it?",
+"Which country would you live in for a year? | What would you do for fun?",
+"What do you hope never changes? | Why is it worth protecting?",
+"What is one small change you could make this month? | Who could help you stick with it?",
+"If you could send a note to yourself five years from now, what would it say? | What would you hope to hear back?"],
+fun:[
+"If you were famous, what would you be famous for? | Who would be your biggest fan?",
+"What would your superhero power be? | What would the drawback be?",
+"What would you do with a surprise day off? | Who would you invite?",
+"Which fictional character would you have dinner with? | What would you order?",
+"What is the weirdest food you have ever tried? | Would you eat it again?",
+"What would your theme song be? | When would it play?",
+"Which book or movie would you like to live inside? | What would your role be?",
+"What is your most useless talent? | Can you show us?",
+"If animals could vote, who would win? | What would their campaign promise be?",
+"If you were stuck on an island, what three things would you bring? | What would you build first?",
+"What is the best kind-hearted prank you can think of? | How would you pull it off?",
+"What would a robot butler get wrong? | What would you program differently?",
+"What is your go-to karaoke song? | Who sings backup?",
+"Invent a new holiday. What do people do on it? | What is the special food?"]
+}
+};
+
+/* ---------- saved setup ---------- */
+const DEF={players:3,avs:[0,1,2,3,4,5],names:['','','','','',''],decks:['little'],cats:CATS.map(c=>c.id),everyone:false,stars:false,voice:true,sound:true};
+let save=JSON.parse(JSON.stringify(DEF));
+try{const s=JSON.parse(localStorage.getItem('talk.v1')); if(s&&typeof s==='object') Object.assign(save,s);}catch(e){}
+function sanitize(){
+  save.players=Math.min(6,Math.max(2,parseInt(save.players)||3));
+  const used=new Set(), avs=[];
+  for(let i=0;i<6;i++){let a=Array.isArray(save.avs)?save.avs[i]:i; if(!Number.isInteger(a)||a<0||a>=AV.length||used.has(a)){a=AV.findIndex((_,k)=>!used.has(k));} used.add(a); avs.push(a);}
+  save.avs=avs;
+  save.names=Array.from({length:6},(_,i)=>String((Array.isArray(save.names)&&save.names[i])||'').slice(0,14));
+  save.decks=(Array.isArray(save.decks)?save.decks:[]).filter(d=>T[d]); if(!save.decks.length) save.decks=['little'];
+  save.cats=(Array.isArray(save.cats)?save.cats:[]).filter(c=>CATBY[c]); if(!save.cats.length) save.cats=CATS.map(c=>c.id);
+  for(const k of ['everyone','stars','voice','sound']) save[k]=!!save[k];
+}
+sanitize();
+function persist(){try{localStorage.setItem('talk.v1',JSON.stringify(save));}catch(e){}}
+
+/* ---------- audio / voice ---------- */
+let ac;
+function beep(f,d,t){
+  if(!save.sound) return;
+  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    const o=ac.createOscillator(),g=ac.createGain(),n=ac.currentTime+(t||0);
+    o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(.14,n+.02);g.gain.exponentialRampToValueAtTime(.0001,n+d);
+    o.connect(g);g.connect(ac.destination);o.start(n);o.stop(n+d+.03);}catch(e){}
+}
+function speak(t){
+  if(!save.voice||!('speechSynthesis' in window)) return;
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=.9;u.pitch=1.1;speechSynthesis.speak(u);}catch(e){}
+}
+function stopSpeak(){try{if('speechSynthesis' in window) speechSynthesis.cancel();}catch(e){}}
+let tt;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1800);}
+
+/* ---------- setup screen ---------- */
+function renderSetup(){
+  $('#optPlayers').innerHTML=[2,3,4,5,6].map(n=>`<button data-act="cnt" data-n="${n}" aria-pressed="${save.players===n}" aria-label="${n} players">${n}</button>`).join('');
+  $('#plist').innerHTML=Array.from({length:save.players},(_,i)=>`<div class="prow"><span class="num">${i+1}</span><button class="av" data-act="av" data-i="${i}" aria-label="Change animal for player ${i+1}">${AV[save.avs[i]]}</button><input data-act="nm" data-i="${i}" maxlength="14" placeholder="Player ${i+1}" aria-label="Name for player ${i+1}" autocomplete="off" value="${esc(save.names[i])}"></div>`).join('');
+  $('#optDecks').innerHTML=DECKS.map(d=>`<button class="chip" data-act="deck" data-id="${d.id}" aria-pressed="${save.decks.includes(d.id)}"><span class="e">${d.emoji}</span><span class="t">${d.name}<small>${d.sub}</small></span></button>`).join('');
+  $('#optCats').innerHTML=CATS.map(c=>`<button class="chip" style="--cc:${c.color}" data-act="cat" data-id="${c.id}" aria-pressed="${save.cats.includes(c.id)}"><span class="e">${c.emoji}</span><span class="t">${c.name}</span></button>`).join('');
+  document.querySelectorAll('.tg').forEach(b=>b.setAttribute('aria-pressed',String(!!save[b.dataset.k])));
+}
+
+/* ---------- game ---------- */
+let G=null;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function buildBag(){
+  const b=[];
+  for(const d of save.decks) for(const c of save.cats) T[d][c].forEach((s,i)=>{const [p,f]=s.split(' | ');b.push({id:d+'.'+c+'.'+i,d,c,p,f});});
+  return shuffle(b);
+}
+function newGame(){
+  stopSpeak();
+  G={players:Array.from({length:save.players},(_,i)=>({av:save.avs[i],name:save.names[i]||'',stars:0})),
+     turn:0,bag:buildBag(),discard:[],card:null,phase:'pick',deeper:false,spk:0,bonus:{},cat:'',played:0,swaps:0,reshuffles:0,t0:Date.now()};
+  show('game'); render();
+}
+const nm=i=>(G.players[i].name.trim()||('Player '+(i+1)));
+const spkIdx=()=>(G.turn+(save.everyone?G.spk:0))%G.players.length;
+function takeCard(cat){
+  let i=G.bag.findIndex(c=>!cat||c.c===cat);
+  if(i<0){
+    const back=G.discard.filter(c=>!cat||c.c===cat);
+    G.discard=G.discard.filter(c=>cat&&c.c!==cat);
+    G.bag.push(...shuffle(back)); if(back.length){G.reshuffles++; toast('The deck was shuffled! 🔀');}
+    i=G.bag.findIndex(c=>!cat||c.c===cat);
+  }
+  return i<0?null:G.bag.splice(i,1)[0];
+}
+function draw(cat){
+  if(G.phase!=='pick') return;
+  const c=takeCard(cat); if(!c) return;
+  G.card=c;G.cat=cat||'';G.phase='card';G.deeper=false;G.spk=0;G.bonus={};
+  beep(520,.12);beep(780,.16,.1);
+  render(); speak(c.p);
+}
+function swap(){
+  if(G.phase!=='card') return;
+  const old=G.card, nc=takeCard(G.cat);
+  if(!nc){toast('No more cards in this topic'); return;}
+  G.bag.push(old); G.card=nc; G.deeper=false; G.swaps++;
+  beep(620,.1); render(); speak(nc.p);
+}
+function giveStar(i){ if(save.stars){G.players[i].stars++; popPlayer(i);} }
+function next(){
+  if(G.phase!=='card') return;
+  const n=G.players.length, who=spkIdx();
+  giveStar(who);
+  if(save.everyone&&G.spk<n-1){ G.spk++; beep(600,.1); render(); return; }
+  G.discard.push(G.card); G.card=null; G.played++; G.phase='pick'; G.deeper=false; G.spk=0; G.bonus={};
+  G.turn=(G.turn+1)%n; beep(700,.1);beep(900,.14,.09);
+  stopSpeak(); render();
+}
+function popPlayer(i){setTimeout(()=>{const el=document.querySelector(`.pl[data-i="${i}"]`);if(el){el.classList.add('pop');setTimeout(()=>el.classList.remove('pop'),650);}},0);}
+function render(){
+  if(!G) return;
+  const n=G.players.length, cur=spkIdx();
+  $('#cleft').textContent='🃏 '+G.bag.length+' left';
+  $('#voiceBtn').textContent=save.voice?'🔊':'🔇';
+  const pl=$('#players'); pl.style.setProperty('--n',n);
+  pl.innerHTML=G.players.map((p,i)=>{
+    const done=G.phase==='card'&&save.everyone&&((i-G.turn+n)%n)<G.spk;
+    return `<div class="pl${i===cur?' cur':''}${done?' done':''}" data-i="${i}"><div class="a">${AV[p.av]}</div><div class="n">${esc(nm(i))}</div><div class="s">${save.stars?'⭐ '+p.stars:''}</div></div>`;
+  }).join('');
+  const st=$('#stage'), ft=$('#foot');
+  if(G.phase==='pick'){
+    st.innerHTML=`<div class="sc"><div class="back" data-act="draw" data-cat="" role="button" tabindex="0" aria-label="Draw a random card">💬<span>Talk Time</span></div><p class="turn"><b>${esc(nm(cur))}</b>, it's your turn!<br><small>Tap the deck or pick a topic</small></p></div>`;
+    ft.innerHTML=`<div class="pills"><button class="pill any" data-act="draw" data-cat=""><span class="e">🎲</span>Surprise me</button>`+
+      CATS.filter(c=>save.cats.includes(c.id)).map(c=>`<button class="pill" style="--cc:${c.color}" data-act="draw" data-cat="${c.id}"><span class="e">${c.emoji}</span>${c.short}</button>`).join('')+`</div>`;
+  }else{
+    const c=G.card, cat=CATBY[c.c], last=!save.everyone||G.spk===n-1;
+    let bonus='';
+    if(save.stars){
+      const who=G.players.map((_,i)=>i).filter(i=>i!==cur&&!G.bonus[i]);
+      if(who.length) bonus=`<div class="bonus"><span>⭐ Great follow-up question from:</span>${who.map(i=>`<button data-act="bonus" data-i="${i}" aria-label="Star for ${esc(nm(i))}">${AV[G.players[i].av]}</button>`).join('')}</div>`;
+    }
+    st.innerHTML=`<div class="sc"><div class="card" style="--cc:${cat.color}"><div class="band"><span class="e">${cat.emoji}</span>${cat.name}</div><div class="q">${esc(c.p)}</div>${G.deeper?`<div class="deep"><b>Dig deeper</b>${esc(c.f)}</div>`:''}</div>`+
+      `<p class="turn"><b>${esc(nm(cur))}</b>${save.everyone?`, you're up! <small>(${G.spk+1} of ${n})</small>`:', your turn to talk!'}</p>${bonus}</div>`;
+    ft.innerHTML=`<div class="acts"><button class="act" data-act="deeper">${G.deeper?'🙈 Hide follow-up':'💭 Dig deeper'}</button><button class="act" data-act="swap">🔄 Different card</button><button class="act go" data-act="next">${last?'✅ Done, next turn':'➡️ Next speaker'}</button></div>`;
+  }
+}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));}
+function finish(){
+  stopSpeak();
+  const mins=Math.max(1,Math.round((Date.now()-G.t0)/60000));
+  $('#endStat').textContent=`${G.played} card${G.played===1?'':'s'} shared in ${mins} minute${mins===1?'':'s'}`;
+  const rank=G.players.map((p,i)=>({i,p})).sort((a,b)=>b.p.stars-a.p.stars||a.i-b.i);
+  $('#endRank').innerHTML=save.stars?rank.map(r=>`<div class="r"><span class="e">${AV[r.p.av]}</span><span class="nm">${esc(nm(r.i))}</span><span>⭐ ${r.p.stars}</span></div>`).join('')
+    :G.players.map((p,i)=>`<div class="r"><span class="e">${AV[p.av]}</span><span class="nm">${esc(nm(i))}</span><span>💬</span></div>`).join('');
+  show('end');
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b||b.tagName==='INPUT') return;
+  const a=b.dataset.act;
+  switch(a){
+    case 'cnt': save.players=+b.dataset.n; persist(); renderSetup(); break;
+    case 'av': {const i=+b.dataset.i; const used=new Set(save.avs.slice(0,save.players).filter((_,k)=>k!==i));
+      let v=save.avs[i]; for(let k=0;k<AV.length;k++){v=(v+1)%AV.length; if(!used.has(v)) break;} save.avs[i]=v; persist(); renderSetup(); break;}
+    case 'deck': {const id=b.dataset.id,s=new Set(save.decks); if(s.has(id)){if(s.size>1)s.delete(id);else toast('Keep at least one deck');} else s.add(id); save.decks=DECKS.map(d=>d.id).filter(x=>s.has(x)); persist(); renderSetup(); break;}
+    case 'cat': {const id=b.dataset.id,s=new Set(save.cats); if(s.has(id)){if(s.size>1)s.delete(id);else toast('Keep at least one topic');} else s.add(id); save.cats=CATS.map(c=>c.id).filter(x=>s.has(x)); persist(); renderSetup(); break;}
+    case 'tog': {const k=b.dataset.k; save[k]=!save[k]; persist(); renderSetup(); if(G) render(); break;}
+    case 'start': newGame(); break;
+    case 'draw': draw(b.dataset.cat||''); break;
+    case 'deeper': G.deeper=!G.deeper; render(); if(G.deeper) speak(G.card.f); else stopSpeak(); break;
+    case 'swap': swap(); break;
+    case 'next': next(); break;
+    case 'bonus': {const i=+b.dataset.i; if(!G.bonus[i]){G.bonus[i]=1; giveStar(i); beep(880,.12); render(); popPlayer(i);} break;}
+    case 'voice': save.voice=!save.voice; persist(); if(!save.voice) stopSpeak(); render(); break;
+    case 'finish': finish(); break;
+    case 'resume': show('game'); render(); break;
+    case 'setup': G=null; stopSpeak(); renderSetup(); show('setup'); break;
+  }
+});
+document.addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('back')){e.preventDefault();draw('');}
+});
+document.addEventListener('input',e=>{
+  const t=e.target; if(t.dataset&&t.dataset.act==='nm'){save.names[+t.dataset.i]=t.value.slice(0,14); persist();}
+});
+
+renderSetup();
+window.__TK={T,CATS,DECKS,AV,get G(){return G;},get save(){return save;},newGame,draw,next,swap,render};
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+})();
+</script>
+</body>
+</html>

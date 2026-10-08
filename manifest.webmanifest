@@ -1,0 +1,16 @@
+{
+  "name": "Talk Time Cards",
+  "short_name": "Talk Time",
+  "description": "A pass-and-play conversation card game for up to six players.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#2b2370",
+  "theme_color": "#2b2370",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
